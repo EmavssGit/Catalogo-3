@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo de Productos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50 p-6 font-sans">
+
+  <header class="max-w-6xl mx-auto mb-6 text-center">
+    <h1 class="text-3xl font-bold">Catálogo de Productos</h1>
+    <p class="text-sm text-gray-600">Consulta los productos disponibles</p>
+    <div class="flex justify-center mt-4">
+      <select id="filtroCategoria" class="border rounded px-3 py-2"></select>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto">
+    <section id="contenedorProductos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
+  </main>
+
+  <footer class="max-w-6xl mx-auto mt-8 text-center text-xs text-gray-500">
+    Catálogo generado con HTML + JS + Supabase — Responsive
+  </footer>
+
+  <script>
+    // 🔑 PONER TUS DATOS DE SUPABASE
+    const SUPABASE_URL = "https://glbplyqmksjrbebvluls.supabase.co";
+    const SUPABASE_ANON_KEY = "TU_ANON_KEY_AQUI";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const CATEGORIES = ["Regaleria", "Jugueteria", "Bazar", "Libreria", "Limpieza e Higiene Personal"];
+    let filtroCategoria = "Todos";
+
+    const filtroSelect = document.getElementById("filtroCategoria");
+    const contenedorProductos = document.getElementById("contenedorProductos");
+
+    // Inicializar select de categorías
+    filtroSelect.innerHTML = `<option>Todos</option>` + CATEGORIES.map(c => `<option>${c}</option>`).join("");
+    filtroSelect.addEventListener("change", e => {
+      filtroCategoria = e.target.value;
+      renderProductos();
+    });
+
+    let productos = [];
+
+    async function fetchProductos() {
+      const { data, error } = await supabase.from('productos').select('*').order('creado_en', { ascending: false });
+      if (error) return console.error("Error cargando productos:", error);
+      productos = data;
+      renderProductos();
+    }
+
+    function renderProductos() {
+      let filtrados = filtroCategoria === "Todos" ? productos : productos.filter(p => p.categoria === filtroCategoria);
+      contenedorProductos.innerHTML = filtrados.length === 0
+        ? `<div class="col-span-full bg-white p-6 rounded shadow text-center text-gray-600">No hay productos para mostrar.</div>`
+        : filtrados.map(p => `
+          <article class="bg-white p-4 rounded shadow">
+            <div class="h-40 bg-gray-100 rounded flex items-center justify-center overflow-hidden mb-3">
+              ${p.imagenUrl ? `<img src="${p.imagenUrl}" alt="${p.nombre}" class="object-cover w-full h-full">` : `<div class="text-gray-400">Sin imagen</div>`}
+            </div>
+            <h3 class="font-semibold">${p.nombre}</h3>
+            <div class="text-sm text-gray-600">${p.categoria} • ${p.codigo || "-"}</div>
+            <p class="mt-2 text-sm text-gray-700">${p.descripcion || ""}</p>
+            <div class="mt-3 text-sm font-medium">${p.precio || "--"}</div>
+          </article>
+        `).join("");
+    }
+
+    // Carga inicial
+    fetchProductos();
+
+    // 🔄 Auto-refresh cada 10 segundos
+    setInterval(fetchProductos, 10000);
+
+  </script>
+
+</body>
+</html>
+
+      

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50 p-6 font-sans">
+
+  <header class="max-w-4xl mx-auto mb-6 text-center">
+    <h1 class="text-3xl font-bold">Panel de Carga de Productos</h1>
+    <p class="text-sm text-gray-600">Gestiona tus productos (se guardan en Supabase)</p>
+  </header>
+
+  <main class="max-w-4xl mx-auto">
+    <!-- Formulario de carga -->
+    <div class="bg-white p-4 rounded shadow mb-6">
+      <form id="formProducto" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input id="nombre" placeholder="Nombre" class="border px-3 py-2 rounded" required>
+        <input id="codigo" placeholder="Código (opcional)" class="border px-3 py-2 rounded">
+        <select id="categoria" class="border px-3 py-2 rounded"></select>
+        <input id="precio" placeholder="Precio (opcional)" class="border px-3 py-2 rounded">
+        <input id="imagenUrl" placeholder="URL de imagen (opcional)" class="border px-3 py-2 rounded md:col-span-2">
+        <textarea id="descripcion" placeholder="Descripción" class="border px-3 py-2 rounded md:col-span-2"></textarea>
+        <div class="md:col-span-2 flex gap-2">
+          <button class="bg-green-600 text-white px-4 py-2 rounded">Agregar producto</button>
+          <button type="reset" class="px-4 py-2 border rounded">Limpiar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de productos -->
+    <section id="contenedorProductos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
+  </main>
+
+  <footer class="max-w-4xl mx-auto mt-8 text-center text-xs text-gray-500">
+    Panel Admin — Solo para uso interno
+  </footer>
+
+  <script>
+    // 🔑 PONER TUS DATOS DE SUPABASE
+    const SUPABASE_URL = "https://glbplyqmksjrbebvluls.supabase.co";
+    const SUPABASE_ANON_KEY = "TU_ANON_KEY_AQUI";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const CATEGORIES = ["Regaleria", "Jugueteria", "Bazar", "Libreria", "Limpieza e Higiene Personal"];
+    const categoriaSelect = document.getElementById("categoria");
+    const formProducto = document.getElementById("formProducto");
+    const contenedorProductos = document.getElementById("contenedorProductos");
+
+    categoriaSelect.innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join("");
+
+    let productos = [];
+
+    async function fetchProductos() {
+      const { data, error } = await supabase.from('productos').select('*').order('creado_en', { ascending: false });
+      if (error) return console.error("Error cargando productos:", error);
+      productos = data;
+      renderProductos();
+    }
+
+    function renderProductos() {
+      contenedorProductos.innerHTML = productos.length === 0
+        ? `<div class="col-span-full bg-white p-6 rounded shadow text-center text-gray-600">No hay productos cargados.</div>`
+        : productos.map(p => `
+          <article class="bg-white p-4 rounded shadow relative">
+            <div class="h-40 bg-gray-100 rounded flex items-center justify-center overflow-hidden mb-3">
+              ${p.imagenUrl ? `<img src="${p.imagenUrl}" alt="${p.nombre}" class="object-cover w-full h-full">` : `<div class="text-gray-400">Sin imagen</div>`}
+            </div>
+            <h3 class="font-semibold">${p.nombre}</h3>
+            <div class="text-sm text-gray-600">${p.categoria} • ${p.codigo || "-"}</div>
+            <p class="mt-2 text-sm text-gray-700">${p.descripcion || ""}</p>
+            <div class="mt-3 flex items-center justify-between">
+              <div class="text-sm font-medium">${p.precio || "--"}</div>
+              <button onclick="eliminarProducto(${p.id})" class="text-xs border px-2 py-1 rounded">Eliminar</button>
+            </div>
+          </article>
+        `).join("");
+    }
+
+    // Agregar producto
+    formProducto.addEventListener("submit", async e => {
+      e.preventDefault();
+      const nuevo = {
+        nombre: document.getElementById("nombre").value,
+        codigo: document.getElementById("codigo").value,
+        categoria: document.getElementById("categoria").value,
+        precio: document.getElementById("precio").value,
+        imagenUrl: document.getElementById("imagenUrl").value,
+        descripcion: document.getElementById("descripcion").value,
+      };
+      const { data, error } = await supabase.from('productos').insert([nuevo]);
+      if (error) return alert("Error al agregar producto: " + error.message);
+      formProducto.reset();
+      fetchProductos(); // actualizar lista
+    });
+
+    // Eliminar producto
+    async function eliminarProducto(id) {
+      if (!confirm("¿Eliminar producto?")) return;
+      const { error } = await supabase.from('productos').delete().eq('id', id);
+      if (error) return alert("Error al eliminar: " + error.message);
+      fetchProductos(); // actualizar lista
+    }
+
+    // Carga inicial
+    fetchProductos();
+
+    // 🔄 Auto-refresh cada 10 segundos
+    setInterval(fetchProductos, 10000);
+
+  </script>
+
+</body>
+</html>
